@@ -53,7 +53,7 @@ class Monitor(QWidget):
 
     def update_table(self):
         self.ui.tblIPs.clearContents()
-        for row in range(self.ui.tblIPs.rowCount()):
+        for row in range(self.ui.tblIPs.rowCount(), -1, -1):
             self.ui.tblIPs.removeRow(row)
         rowPosition = 0
         for i in self.ips:
