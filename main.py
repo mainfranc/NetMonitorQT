@@ -55,17 +55,13 @@ class Monitor(QWidget):
         self.ui.tblIPs.clearContents()
         for row in range(self.ui.tblIPs.rowCount()):
             self.ui.tblIPs.removeRow(row)
-            print(f'row {row} removed')
         rowPosition = 0
-        print(self.ips)
         for i in self.ips:
-            print(f'adding {rowPosition}')
             self.ui.tblIPs.insertRow(rowPosition)
             self.ui.tblIPs.setItem(rowPosition, 0, QTableWidgetItem(i))
             rowPosition += 1
 
     def update_ip_status(self):
-        print('run status update')
         self.ui.lblstatus.setText("Активно")
         param = '-n' if platform.system().lower() == 'windows' else '-c'
         rowPosition = 0
@@ -143,7 +139,7 @@ class Tracert(QDialog):
         self.ui.setupUi(self)
         result = [subprocess.check_output(f"tracert {i}") for i in ips]
         for i in result:
-            self.ui.txtTracert.insertPlainText(str(i))
+            self.ui.txtTracert.insertPlainText(i.decode('ascii', errors='ignore'))
 
 
 if __name__ == "__main__":
