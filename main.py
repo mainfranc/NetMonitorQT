@@ -1,4 +1,4 @@
-from PySide2.QtCore import (Signal, QThread, Qt, QSettings)
+from PySide2.QtCore import Signal, QThread, Qt, QSettings, Slot
 from PySide2.QtGui import QCloseEvent, QShowEvent, QHideEvent
 from PySide2.QtWidgets import QWidget, QApplication, QDialog, QTableWidgetItem, QMessageBox
 
@@ -27,9 +27,12 @@ class Monitor(QWidget):
         self.t.started.connect(lambda: print("Поток запущен"))
         self.t.finished.connect(lambda: print("Поток завершен"))
         self.t.mysignal.connect(self.update_ip_status, Qt.QueuedConnection)
+
+        self.trace_t = TraceThread()
+        self.trace_t.mysignal.connect(self.btnTracertPressed, Qt.QueuedConnection)
         # button clicks
         self.ui.btnSettings.clicked.connect(self.btnSettingsPressed)
-        self.ui.btnTracert.clicked.connect(self.btnTracertPressed)
+        self.ui.btnTracert.clicked.connect(self.trace_t.start)
         self.ui.btnStart.clicked.connect(self.t.start)
         self.ui.btnStop.clicked.connect(self.stop)
         # table update
@@ -41,10 +44,12 @@ class Monitor(QWidget):
             return [i for i in self.settings.value('ips')]
         return []
 
+    @Slot()
     def btnSettingsPressed(self):
         setting_window = IPSettings(self, self.ips)
         setting_window.exec_()
 
+    @Slot()
     def btnTracertPressed(self):
         ips_to_search = []
         for index in self.ui.tblIPs.selectedItems():
@@ -109,6 +114,7 @@ class Monitor(QWidget):
             self.stop()
             print("execution paused")
 
+    @Slot()
     def stop(self):
         self.t.status = False
         self.ui.lblstatus.setText("Стоп")
@@ -124,6 +130,14 @@ class IPsThread(QThread):
             self.mysignal.emit()
             time.sleep(20)
 
+class TraceThread(QThread):
+    mysignal = Signal()
+    status = False
+
+    def run(self) -> None:
+        self.mysignal.emit()
+        # time.sleep(5)
+
 
 class IPSettings(QDialog):
     def __init__(self, parent=None, lst_ips = []):
@@ -138,12 +152,14 @@ class IPSettings(QDialog):
         self.ui.btnRemove.clicked.connect(self.btnRemovePressed)
         self.ui.btnUpdateList.clicked.connect(self.btnUpdateListPressed)
 
+    @Slot()
     def btnRemovePressed(self):
         listItems = self.ui.lstIPs.selectedItems()
         if not listItems: return
         for item in listItems:
             self.ui.lstIPs.takeItem(self.ui.lstIPs.row(item))
 
+    @Slot()
     def btnAddPressed(self):
         reg_ex = r"^((([0-9])|([1-9][0-9])|(1[0-9][0-9])|(2[0-4][0-9])|(25[0-5]))\.){3}" \
                  r"(([0-9])|([1-9][0-9])|(1[0-9][0-9])|(2[0-4][0-9])|(25[0-5]))$"
@@ -153,6 +169,7 @@ class IPSettings(QDialog):
         else:
             self.ui.ip_name.setText("ip format is wrong. please use _._._._ format")
 
+    @Slot()
     def btnUpdateListPressed(self):
         self.close()
 
