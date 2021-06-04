@@ -1,6 +1,6 @@
 from PySide2.QtCore import Signal, QThread, Qt, QSettings, Slot
-from PySide2.QtGui import QCloseEvent, QShowEvent, QHideEvent
-from PySide2.QtWidgets import QWidget, QApplication, QDialog, QTableWidgetItem, QMessageBox
+from PySide2.QtGui import QCloseEvent, QShowEvent, QHideEvent, QPixmap
+from PySide2.QtWidgets import QWidget, QApplication, QDialog, QTableWidgetItem, QMessageBox, QSplashScreen
 
 import time
 import re
@@ -193,7 +193,12 @@ class Tracert(QDialog):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
 
+    splash = QSplashScreen(QPixmap("фира.jpg"))
+    splash.showMessage("Загрузка данных...", Qt.AlignHCenter | Qt.AlignBottom, Qt.black)
+    splash.show()
+
     myWindow = Monitor()
+    splash.finish(myWindow)
     myWindow.show()
 
     sys.exit(app.exec_())
