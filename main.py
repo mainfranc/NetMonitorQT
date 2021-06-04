@@ -26,10 +26,10 @@ class Monitor(QWidget):
         self.t = IPsThread()
         self.t.started.connect(lambda: print("Поток запущен"))
         self.t.finished.connect(lambda: print("Поток завершен"))
-        self.t.mysignal.connect(self.update_ip_status, Qt.QueuedConnection)
+        self.t.mysignal.connect(self.update_ip_status, Qt.AutoConnection)
 
         self.trace_t = TraceThread()
-        self.trace_t.mysignal.connect(self.btnTracertPressed, Qt.QueuedConnection)
+        self.trace_t.mysignal.connect(self.btnTracertPressed, Qt.AutoConnection)
         # button clicks
         self.ui.btnSettings.clicked.connect(self.btnSettingsPressed)
         self.ui.btnTracert.clicked.connect(self.trace_t.start)
@@ -76,6 +76,7 @@ class Monitor(QWidget):
             ip_status = 'on' if response != 1 else 'off'
             self.ui.tblIPs.setItem(rowPosition, 1, QTableWidgetItem(ip_status))
             if not self.ips_status[i]:
+                self.ips_status[i] = ip_status
                 if ip_status == 'off':
                     self.ui.txtLog.insertPlainText(f'ip {i} is unavailable on {time.ctime(time.time())}\n')
             else:
@@ -84,6 +85,7 @@ class Monitor(QWidget):
                         self.ui.txtLog.insertPlainText(f'ip {i} is unavailable on {time.ctime(time.time())}\n')
                     else:
                         self.ui.txtLog.insertPlainText(f'ip {i} is available on {time.ctime(time.time())}\n')
+                    self.ips_status[i] = ip_status
             rowPosition += 1
 
     def closeEvent(self, event: QCloseEvent) -> None:
