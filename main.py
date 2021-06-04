@@ -1,6 +1,6 @@
 from PySide2.QtCore import (Signal, QThread, Qt, QSettings)
-from PySide2.QtGui import QCloseEvent
-from PySide2.QtWidgets import (QWidget, QApplication, QDialog, QTableWidgetItem)
+from PySide2.QtGui import QCloseEvent, QShowEvent, QHideEvent
+from PySide2.QtWidgets import QWidget, QApplication, QDialog, QTableWidgetItem, QMessageBox
 
 import time
 import re
@@ -18,6 +18,7 @@ class Monitor(QWidget):
         super().__init__()
         self.ui = PingMonitor_design.Ui_Form()
         self.ui.setupUi(self)
+        self.prev_run_status = False
         # settings
         self.settings = QSettings('Monitor')
         self.ips = sorted(self.load_data())
@@ -81,14 +82,42 @@ class Monitor(QWidget):
             rowPosition += 1
 
     def closeEvent(self, event: QCloseEvent) -> None:
-        self.settings.setValue("ips", self.ips)
+        result = QMessageBox.question(self,
+                                      "Exit",
+                                      "Do you want to save the changes?",
+                                      QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
+        if result.name != b"Cancel":
+            if result.name == b"Yes":
+                self.settings.setValue("ips", self.ips)
+            return QWidget.closeEvent(self, event)
+        event.ignore()
+        return None
+
+    def showEvent(self, event):
+        if self.prev_run_status:
+            self.t.start()
+            print("continue execution")
+        return QWidget.showEvent(self, event)
+
+    def hideEvent(self, event):
+        self.hide_proc()
+        return QWidget.hideEvent(self, event)
+
+    def hide_proc(self):
+        if self.t.status:
+            self.prev_run_status = self.t.status
+            self.stop()
+            print("execution paused")
 
     def stop(self):
         self.t.status = False
         self.ui.lblstatus.setText("Стоп")
 
+
 class IPsThread(QThread):
     mysignal = Signal()
+    status = False
+
     def run(self) -> None:
         self.status = True
         while self.status:
