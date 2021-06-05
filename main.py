@@ -22,13 +22,16 @@ class Monitor(QWidget):
         # settings
         self.settings = QSettings('Monitor')
         self.ips = sorted(self.load_data())
+        self.ips_status = {i: None for i in self.ips}
         # Thread
         self.t = IPsThread()
-        self.t.started.connect(lambda: print("Поток запущен"))
-        self.t.finished.connect(lambda: print("Поток завершен"))
+        self.t.setter(self.ips)
+        # self.t.started.connect(lambda: print("Поток запущен"))
+        # self.t.finished.connect(lambda: print("Поток завершен"))
         self.t.mysignal.connect(self.update_ip_status, Qt.AutoConnection)
 
         self.trace_t = TraceThread()
+        self.trace_t.setter(self.ui.tblIPs)
         self.trace_t.mysignal.connect(self.btnTracertPressed, Qt.AutoConnection)
         # button clicks
         self.ui.btnSettings.clicked.connect(self.btnSettingsPressed)
@@ -37,7 +40,7 @@ class Monitor(QWidget):
         self.ui.btnStop.clicked.connect(self.stop)
         # table update
         self.update_table()
-        self.ips_status = {i: None for i in self.ips}
+
 
     def load_data(self):
         if self.settings.value('ips'):
@@ -50,11 +53,9 @@ class Monitor(QWidget):
         setting_window.exec_()
 
     @Slot()
-    def btnTracertPressed(self):
-        ips_to_search = []
-        for index in self.ui.tblIPs.selectedItems():
-            ips_to_search.append(self.ui.tblIPs.item(index.row(), 0).text())
-        tracert_window = Tracert(self, ips_to_search)
+    def btnTracertPressed(self, results):
+
+        tracert_window = Tracert(self, results)
         tracert_window.exec_()
 
     def update_table(self):
@@ -67,13 +68,11 @@ class Monitor(QWidget):
             self.ui.tblIPs.setItem(rowPosition, 0, QTableWidgetItem(i))
             rowPosition += 1
 
-    def update_ip_status(self):
+    def update_ip_status(self, ips_list):
         self.ui.lblstatus.setText("Активно")
-        param = '-n' if platform.system().lower() == 'windows' else '-c'
         rowPosition = 0
         for i in self.ips:
-            response = os.system(f"ping {param} 1 {i}")
-            ip_status = 'on' if response != 1 else 'off'
+            ip_status = ips_list[i]
             self.ui.tblIPs.setItem(rowPosition, 1, QTableWidgetItem(ip_status))
             if not self.ips_status[i]:
                 self.ips_status[i] = ip_status
@@ -123,21 +122,37 @@ class Monitor(QWidget):
 
 
 class IPsThread(QThread):
-    mysignal = Signal()
+    mysignal = Signal(dict)
     status = False
+
+    def setter(self, ips):
+        self.ips = ips
+        self.ips_status = {i: None for i in self.ips}
 
     def run(self) -> None:
         self.status = True
+        param = '-n' if platform.system().lower() == 'windows' else '-c'
         while self.status:
-            self.mysignal.emit()
+            for i in self.ips:
+                response = os.system(f"ping {param} 1 {i}")
+                ip_status = 'on' if response != 1 else 'off'
+                self.ips_status[i] = ip_status
+            self.mysignal.emit(self.ips_status)
             time.sleep(20)
 
 class TraceThread(QThread):
-    mysignal = Signal()
+    mysignal = Signal(list)
     status = False
 
+    def setter(self, table):
+        self.table = table
+
     def run(self) -> None:
-        self.mysignal.emit()
+        ips_to_search = []
+        for index in self.table.selectedItems():
+            ips_to_search.append(self.table.item(index.row(), 0).text())
+        result = [subprocess.check_output(f"tracert {i}") for i in ips_to_search]
+        self.mysignal.emit(result)
         # time.sleep(5)
 
 
@@ -181,12 +196,11 @@ class IPSettings(QDialog):
 
 
 class Tracert(QDialog):
-    def __init__(self, parent=None, ips=[]):
+    def __init__(self, parent=None, results=[]):
         super().__init__()
         self.ui = Tracert_design.Ui_Form()
         self.ui.setupUi(self)
-        result = [subprocess.check_output(f"tracert {i}") for i in ips]
-        for i in result:
+        for i in results:
             self.ui.txtTracert.insertPlainText(i.decode('ascii', errors='ignore'))
 
 
